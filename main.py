@@ -4,6 +4,8 @@ import argparse
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from prompts import system_prompt
+from call_functions import available_functions, call_function
 
 
 
@@ -21,16 +23,38 @@ def main():
 # Now we can access `args.user_prompt`
     response =client.models.generate_content(
         model="gemini-2.5-flash",
-        contents= messages
+        contents= messages,
+        config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt),
+
     )
     if response.usage_metadata is None:
-        raise RuntimeError("Response is missing usage metadata.")
+        raise RuntimeError("Unable to process response.")
     if args.verbose:
         print(f"User prompt: {args.user_prompt}")
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-        
-    print(response.text)
+    if response.function_calls is not None:
+        function_results=[]
+        for fc in response.function_calls:
+            print(f"Calling function: {fc.name}({fc.args})")
+            function_response = call_function(fc, verbose=args.verbose)
+            if not function_response.parts:
+                raise Exception("tool result had no parts")
+            
+            fr = function_response.parts[0].function_response
+            if fr is None:
+                raise Exception("missing function_response")
+            resp = fr.response
+            if resp is None:
+                raise Exception("missing function_response.response")
+            
+            function_results.append(function_response.parts[0])
+
+            if args.verbose:
+                print(f"-> {resp}")
+
+    else:
+        print(response.text)
 
 
 if __name__ == "__main__":

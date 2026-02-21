@@ -1,6 +1,6 @@
 
 import os
-
+from google.genai import types
 
 def get_file_content(working_directory, file_path):
     
@@ -19,3 +19,20 @@ def get_file_content(working_directory, file_path):
         return content
     except PermissionError:
         return f"Error: Permission denied to read \"{file_path}\"."
+schema_get_files_content = types.FunctionDeclaration(
+    name="get_file_content",
+    description="Returns the content of a specified file relative to the working directory",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "directory": types.Schema(
+                type=types.Type.STRING,
+                description="Directory path to read file from, relative to the working directory (default is the working directory itself)",
+            ),
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="Path of the file to read, relative to the working directory",
+            ),
+        },
+    ),
+)
